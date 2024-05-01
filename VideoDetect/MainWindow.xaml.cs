@@ -131,8 +131,8 @@ namespace VideoDetect
                         // Read the next
                         capture.Read(image);
 
-                        // We only want to save every FPS hit since we have 1 image per second -> mod
-                        if (frameIndex % FPS == 0)
+                        // We only want to save every FPS hit since we have 2 images per second -> mod
+                        if (frameIndex % (FPS/2) == 0)
                         {
                             var rects = cascadeClassifier.DetectMultiScale(image, 1.08, 30, new System.Drawing.Size(30, 30), new System.Drawing.Size(300, 300));
 

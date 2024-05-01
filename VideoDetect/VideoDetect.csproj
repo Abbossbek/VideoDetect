@@ -18,5 +18,8 @@
 		<PackageReference Include="Emgu.CV.runtime.windows" Version="4.8.1.5350" />
 		<PackageReference Include="Emgu.CV.Wpf" Version="4.8.1.5350" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Images\" />
+	</ItemGroup>
 
 </Project>
