@@ -12,7 +12,7 @@ This project is created in C#.
 6. Click on the Detect Face button.
 7. It will detect the face from the video.
 ## Sample Output:
-![FaceDetectFromVideo]([https://user-images.githubusercontent.com/84665036/132096174-0d1b4f4d-9a6c-4d6f-8b7e-4b0e0b5c3e1b.png](https://raw.githubusercontent.com/Abbossbek/VideoDetect/master/VideoDetect/Images/eF3haqmLcA.png))
+![FaceDetectFromVideo](https://raw.githubusercontent.com/Abbossbek/VideoDetect/master/VideoDetect/Images/eF3haqmLcA.png)
 ## Prerequisites:
 1. Visual Studio 2022
 2. EmguCV
