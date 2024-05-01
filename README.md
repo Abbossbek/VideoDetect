@@ -17,7 +17,6 @@ This project is created in C#.
 1. Visual Studio 2022
 2. EmguCV
 3. .Net 8.0
-4. Windows 10
 ## EmguCV Installation:
 1. Open Visual Studio 2022.
 2. Create a new project.
