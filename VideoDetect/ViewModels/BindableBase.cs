@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace VideoDetect.ViewModels
 {
-    public class BindableBase
+    public class BindableBase : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
         // Insert SetProperty below here

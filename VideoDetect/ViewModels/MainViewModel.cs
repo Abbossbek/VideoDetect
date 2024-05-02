@@ -28,7 +28,7 @@ namespace VideoDetect.ViewModels
             get { return videoPath; }
             set { SetProperty(ref videoPath, value); }
         }
-        private ObservableCollection<FoundFace> faces;
+        private ObservableCollection<FoundFace> faces = new();
         public ObservableCollection<FoundFace> Faces
         {
             get { return faces; }
@@ -39,10 +39,6 @@ namespace VideoDetect.ViewModels
         {
             get { return imageSource; }
             set { SetProperty(ref imageSource, value); }
-        }
-        public MainViewModel()
-        {
-            Faces = new ObservableCollection<FoundFace>();
         }
         public void Stop()
         {
@@ -106,31 +102,28 @@ namespace VideoDetect.ViewModels
             }
             Parallel.ForEach(captures, async capture =>
             {
-                await Task.Run(async () =>
+                // Loop while we can read an image (aka: image.Empty is not true)
+                do
                 {
-                    // Loop while we can read an image (aka: image.Empty is not true)
-                    do
+                    int currentFrame = frameIndex += (FPS / 2);
+                    // Read the next
+                    capture.Set(Emgu.CV.CvEnum.CapProp.PosFrames, currentFrame);
+                    using var image = capture.QueryFrame();
+                    if (image == null || image.IsEmpty)
                     {
-                        int currentFrame = frameIndex += (FPS / 2);
-                        // Read the next
-                        capture.Set(Emgu.CV.CvEnum.CapProp.PosFrames, currentFrame);
-                        using var image = capture.QueryFrame();
-                        if (image == null || image.IsEmpty)
-                        {
-                            break;
-                        }
-                        string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
-                        image.Save(path);
-                        //    App.Current.Dispatcher.Invoke(() =>
-                        //{
-                        ImageSource = new BitmapImage(new Uri(path));
-                        //});
-                        DetectFaces(image.Clone(), path);
+                        IsProcessing = false;
+                        break;
+                    }
+                    string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
+                    image.Save(path);
+                    //    App.Current.Dispatcher.Invoke(() =>
+                    //{
+                    ImageSource = new BitmapImage(new Uri(path));
+                    //});
+                    await DetectFaces(image.Clone(), path);
 
-                    } while (isProcessing);
-                });
+                } while (isProcessing);
             });
-            IsProcessing = false;
         }
         async Task DetectFaces(Mat image, string imagePath)
         {
@@ -145,7 +138,10 @@ namespace VideoDetect.ViewModels
                     var face = new Mat(image, rect);
                     string facePath = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
                     face.Save(facePath);
-                    Faces.Add(new FoundFace { ImagePath = facePath, FoundFromImagePath = imagePath });
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        Faces.Add(new FoundFace { ImagePath = facePath, FoundFromImagePath = imagePath });
+                    });
                 }
                 image.Dispose();
             });

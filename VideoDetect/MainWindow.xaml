@@ -8,7 +8,7 @@
 	xmlns:utils="clr-namespace:VideoDetect.Utils"
 	xmlns:viewmodels="clr-namespace:VideoDetect.ViewModels"
 	mc:Ignorable="d"
-	Title="MainWindow"
+	Title="Video detect"
 	Height="450"
 	Width="800">
 	<Window.DataContext>
@@ -65,7 +65,7 @@
 			Grid.Row="1"
 			Grid.Column="0"
 			Name="img"
-			Source="{}"/>
+			Source="{Binding ImageSource}"/>
 		<ListBox
 			Grid.Row="2"
 			Grid.Column="0"
