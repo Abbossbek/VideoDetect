@@ -12,6 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Emgu.CV;
+using VideoDetect.Models;
 
 namespace VideoDetect
 {
@@ -21,15 +22,15 @@ namespace VideoDetect
     public partial class MainWindow : Window
     {
         private readonly CascadeClassifier cascadeClassifier;
-        public ObservableCollection<string> Faces
+        public ObservableCollection<FoundFace> Faces
         {
-            get { return (ObservableCollection<string>)GetValue(FacesProperty); }
+            get { return (ObservableCollection<FoundFace>)GetValue(FacesProperty); }
             set { SetValue(FacesProperty, value); }
         }
 
         // Using a DependencyProperty as the backing store for Faces.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty FacesProperty =
-            DependencyProperty.Register("Faces", typeof(ObservableCollection<string>), typeof(MainWindow), new PropertyMetadata(new ObservableCollection<string>()));
+            DependencyProperty.Register("Faces", typeof(ObservableCollection<FoundFace>), typeof(MainWindow), new PropertyMetadata(new ObservableCollection<FoundFace>()));
 
 
 
@@ -132,10 +133,16 @@ namespace VideoDetect
                         capture.Read(image);
 
                         // We only want to save every FPS hit since we have 2 images per second -> mod
-                        if (frameIndex % (FPS/2) == 0)
+                        if (frameIndex % (FPS / 2) == 0)
                         {
                             var rects = cascadeClassifier.DetectMultiScale(image, 1.08, 30, new System.Drawing.Size(30, 30), new System.Drawing.Size(300, 300));
 
+                            string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
+                            image.Save(path);
+                            App.Current.Dispatcher.Invoke(() =>
+                            {
+                                img.Source = new BitmapImage(new Uri(path));
+                            });
                             foreach (var rect in rects)
                             {
                                 // get face image
@@ -144,15 +151,9 @@ namespace VideoDetect
                                 face.Save(facePath);
                                 App.Current.Dispatcher.Invoke(() =>
                                 {
-                                    Faces.Insert(0, facePath);
+                                    Faces.Add(new FoundFace { ImagePath = facePath, FoundFromImagePath = path });
                                 });
                             }
-                            string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
-                            image.Save(path);
-                            App.Current.Dispatcher.Invoke(() =>
-                            {
-                                img.Source = new BitmapImage(new Uri(path));
-                            });
                         }
 
                         frameIndex++;
@@ -169,6 +170,14 @@ namespace VideoDetect
                     });
                 }
             });
+        }
+
+        private void listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (listBox.SelectedItem != null && listBox.SelectedItem is FoundFace ff)
+            {
+                img.Source = new BitmapImage(new Uri(ff.FoundFromImagePath));
+            }
         }
     }
 }

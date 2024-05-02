@@ -14,6 +14,8 @@
 				Height="Auto" />
 			<RowDefinition
 				Height="*" />
+			<RowDefinition
+				Height="Auto" />
 		</Grid.RowDefinitions>
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition
@@ -58,19 +60,26 @@
 			Grid.Column="0"
 			Name="img" />
 		<ListBox
-			Grid.Row="0"
-			Grid.Column="1"
-			Grid.RowSpan="2"
+			Grid.Row="2"
+			Grid.Column="0"
+			Grid.ColumnSpan="2"
 			Name="listBox"
+			SelectionChanged="listBox_SelectionChanged"
 			ItemsSource="{Binding Faces}">
 			<ListBox.ItemTemplate>
 				<DataTemplate>
 					<Image
-						Source="{Binding}"
+						Source="{Binding ImagePath}"
 						Width="100"
 						Height="100" />
 				</DataTemplate>
 			</ListBox.ItemTemplate>
+			<ListBox.ItemsPanel>
+				<ItemsPanelTemplate>
+					<WrapPanel
+						Orientation="Horizontal" />
+				</ItemsPanelTemplate>
+			</ListBox.ItemsPanel>
 		</ListBox>
 	</Grid>
 </Window>
