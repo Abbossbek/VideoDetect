@@ -135,25 +135,13 @@ namespace VideoDetect
                         // We only want to save every FPS hit since we have 2 images per second -> mod
                         if (frameIndex % (FPS / 2) == 0)
                         {
-                            var rects = cascadeClassifier.DetectMultiScale(image, 1.08, 30, new System.Drawing.Size(30, 30), new System.Drawing.Size(300, 300));
-
                             string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
                             image.Save(path);
                             App.Current.Dispatcher.Invoke(() =>
                             {
                                 img.Source = new BitmapImage(new Uri(path));
                             });
-                            foreach (var rect in rects)
-                            {
-                                // get face image
-                                var face = new Mat(image, rect);
-                                string facePath = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
-                                face.Save(facePath);
-                                App.Current.Dispatcher.Invoke(() =>
-                                {
-                                    Faces.Add(new FoundFace { ImagePath = facePath, FoundFromImagePath = path });
-                                });
-                            }
+                            DetectFaces(image.Clone(), path);
                         }
 
                         frameIndex++;
@@ -171,7 +159,26 @@ namespace VideoDetect
                 }
             });
         }
+        async Task DetectFaces(Mat image, string imagePath)
+        {
+            await Task.Run(() =>
+            {
+                var rects = cascadeClassifier.DetectMultiScale(image, 1.08, 30, new System.Drawing.Size(30, 30), new System.Drawing.Size(300, 300));
 
+                foreach (var rect in rects)
+                {
+                    // get face image
+                    var face = new Mat(image, rect);
+                    string facePath = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
+                    face.Save(facePath);
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        Faces.Add(new FoundFace { ImagePath = facePath, FoundFromImagePath = imagePath });
+                    });
+                }
+                image.Dispose();
+            });
+        }
         private void listBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (listBox.SelectedItem != null && listBox.SelectedItem is FoundFace ff)
