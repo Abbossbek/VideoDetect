@@ -106,7 +106,7 @@ namespace VideoDetect
         public static readonly DependencyProperty TimerTextProperty =
             DependencyProperty.Register("TimerText", typeof(string), typeof(MainWindow), new PropertyMetadata(null));
 
-        System.Timers.Timer timer;
+        Timer timer;
         public MainWindow()
         {
             InitializeComponent();
@@ -132,6 +132,7 @@ namespace VideoDetect
         private async void Clear_Click(object sender, RoutedEventArgs e)
         {
             Faces.Clear();
+            TimerText = null;
             img.Source = null;
             await Task.Delay(100);
             if (Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Temp"))
@@ -147,7 +148,8 @@ namespace VideoDetect
         private void Stop_Click(object sender, RoutedEventArgs e)
         {
             IsProcessing = false;
-            timer?.Stop();
+            timer?.Dispose();
+            GC.Collect();
         }
         private async void Detect_Click(object sender, RoutedEventArgs e)
         {
@@ -160,17 +162,14 @@ namespace VideoDetect
             IsProcessing = true;
             int seconds = 0;
             var frameIndex = 0;
-            timer = new System.Timers.Timer();
-            timer.Interval = 1000;
-            timer.Elapsed += (s, e) =>
+            timer = new Timer((o) =>
             {
                 seconds++;
                 App.Current.Dispatcher.Invoke(() =>
                 {
                     TimerText = $"Process time: {TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss")}; Video time: {TimeSpan.FromSeconds(frameIndex / FPS).ToString(@"hh\:mm\:ss")}";
                 });
-            };
-            timer.Start();
+            },null,0,1000);
 
             List<VideoCapture> captures = new List<VideoCapture>();
             for (int i = 0; i < ProcessCount; i++)
@@ -204,8 +203,7 @@ namespace VideoDetect
                         {
                             App.Current.Dispatcher.Invoke(() =>
                             {
-                                IsProcessing = false;
-                                timer.Stop();
+                                Stop_Click(null, null);
                             });
                             break;
                         }

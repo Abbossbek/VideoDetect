@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:VideoDetect"
         mc:Ignorable="d"
-	Title="MainWindow"
+	Title="Video detect"
+		WindowState="Maximized"
 	Height="450"
 	Width="800">
 	<Grid>
@@ -86,7 +87,7 @@
 			Grid.Row="1"
 			Grid.ColumnSpan="3"
 			Margin="5"
-			Text="{Binding TimerText}" />
+			Text="{Binding TimerText, UpdateSourceTrigger=PropertyChanged}" />
 		<Image
 			Grid.Row="2"
 			Grid.Column="0"
