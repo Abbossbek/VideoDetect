@@ -16,6 +16,7 @@ namespace VideoDetect.ViewModels
 {
     public class MainViewModel : BindableBase
     {
+
         private bool isProcessing;
         public bool IsProcessing
         {
@@ -72,7 +73,7 @@ namespace VideoDetect.ViewModels
 
                 }
         }
-        public void Detect()
+        public async Task Detect()
         {
             if (VideoPath == null)
             {
@@ -83,7 +84,7 @@ namespace VideoDetect.ViewModels
             IsProcessing = true;
 
             List<VideoCapture> captures = new List<VideoCapture>();
-            for (int i = 0; i < Environment.ProcessorCount; i++)
+            for (int i = 0; i < 1; i++)
             {
                 captures.Add(new VideoCapture(VideoPath));
             }
@@ -93,36 +94,38 @@ namespace VideoDetect.ViewModels
                 return;
             }
 
-            // using (Window window = new Window("capture"))
             int FPS = Convert.ToInt32(captures.First().Get(Emgu.CV.CvEnum.CapProp.Fps));
             var frameIndex = 0;
             if (Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Temp") == false)
             {
                 Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}Temp");
             }
-            Parallel.ForEach(captures, async capture =>
+            await Task.Run(() =>
             {
-                // Loop while we can read an image (aka: image.Empty is not true)
-                do
+                Parallel.ForEach(captures, async capture =>
                 {
-                    int currentFrame = frameIndex += (FPS / 2);
-                    // Read the next
-                    capture.Set(Emgu.CV.CvEnum.CapProp.PosFrames, currentFrame);
-                    using var image = capture.QueryFrame();
-                    if (image == null || image.IsEmpty)
+                    // Loop while we can read an image (aka: image.Empty is not true)
+                    do
                     {
-                        IsProcessing = false;
-                        break;
-                    }
-                    string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
-                    image.Save(path);
-                    //    App.Current.Dispatcher.Invoke(() =>
-                    //{
-                    ImageSource = new BitmapImage(new Uri(path));
-                    //});
-                    await DetectFaces(image.Clone(), path);
+                        int currentFrame = frameIndex += (FPS / 2);
+                        // Read the next
+                        capture.Set(Emgu.CV.CvEnum.CapProp.PosFrames, currentFrame);
+                        using var image = capture.QueryFrame();
+                        if (image == null || image.IsEmpty)
+                        {
+                            IsProcessing = false;
+                            break;
+                        }
+                        string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
+                        image.Save(path);
+                        //    App.Current.Dispatcher.Invoke(() =>
+                        //{
+                        ImageSource = new BitmapImage(new Uri(path));
+                        //});
+                        await DetectFaces(image.Clone(), path);
 
-                } while (isProcessing);
+                    } while (isProcessing);
+                });
             });
         }
         async Task DetectFaces(Mat image, string imagePath)
