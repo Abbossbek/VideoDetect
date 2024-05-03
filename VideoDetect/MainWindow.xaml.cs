@@ -13,6 +13,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Emgu.CV;
 using VideoDetect.Models;
+using System.Text.RegularExpressions;
 
 namespace VideoDetect
 {
@@ -21,7 +22,6 @@ namespace VideoDetect
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly CascadeClassifier cascadeClassifier;
         public ObservableCollection<FoundFace> Faces
         {
             get { return (ObservableCollection<FoundFace>)GetValue(FacesProperty); }
@@ -57,11 +57,60 @@ namespace VideoDetect
             DependencyProperty.Register("VideoPath", typeof(string), typeof(MainWindow), new PropertyMetadata(null));
 
 
+
+        public int FrameStep
+        {
+            get { return (int)GetValue(FrameStepProperty); }
+            set { SetValue(FrameStepProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for ImagePerSecond.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty FrameStepProperty =
+            DependencyProperty.Register("FrameStep", typeof(int), typeof(MainWindow), new PropertyMetadata(1));
+
+
+
+        public int FPS
+        {
+            get { return (int)GetValue(FPSProperty); }
+            set { SetValue(FPSProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for FPS.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty FPSProperty =
+            DependencyProperty.Register("FPS", typeof(int), typeof(MainWindow), new PropertyMetadata(0));
+
+
+
+        public int ProcessCount
+        {
+            get { return (int)GetValue(ProcessCountProperty); }
+            set { SetValue(ProcessCountProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for ProcessCount.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty ProcessCountProperty =
+            DependencyProperty.Register("ProcessCount", typeof(int), typeof(MainWindow), new PropertyMetadata(1));
+
+
+
+
+
+        public string TimerText
+        {
+            get { return (string)GetValue(TimerTextProperty); }
+            set { SetValue(TimerTextProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for TimerText.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty TimerTextProperty =
+            DependencyProperty.Register("TimerText", typeof(string), typeof(MainWindow), new PropertyMetadata(null));
+
+        System.Timers.Timer timer;
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
-            cascadeClassifier = new CascadeClassifier("haarcascade_frontalface_default.xml");
         }
 
         private void OpenVideo_Click(object sender, RoutedEventArgs e)
@@ -75,6 +124,9 @@ namespace VideoDetect
             if (result == true)
             {
                 VideoPath = dlg.FileName;
+                using (var capture = new VideoCapture(VideoPath))
+                    FPS = Convert.ToInt32(capture.Get(Emgu.CV.CvEnum.CapProp.Fps));
+                FrameStep = FPS;
             }
         }
         private async void Clear_Click(object sender, RoutedEventArgs e)
@@ -95,6 +147,7 @@ namespace VideoDetect
         private void Stop_Click(object sender, RoutedEventArgs e)
         {
             IsProcessing = false;
+            timer?.Stop();
         }
         private async void Detect_Click(object sender, RoutedEventArgs e)
         {
@@ -105,64 +158,79 @@ namespace VideoDetect
             }
 
             IsProcessing = true;
+            int seconds = 0;
+            var frameIndex = 0;
+            timer = new System.Timers.Timer();
+            timer.Interval = 1000;
+            timer.Elapsed += (s, e) =>
+            {
+                seconds++;
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    TimerText = $"Process time: {TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss")}; Video time: {TimeSpan.FromSeconds(frameIndex / FPS).ToString(@"hh\:mm\:ss")}";
+                });
+            };
+            timer.Start();
 
-            VideoCapture capture = new VideoCapture(VideoPath);
-            if (!capture.IsOpened)
+            List<VideoCapture> captures = new List<VideoCapture>();
+            for (int i = 0; i < ProcessCount; i++)
+            {
+                captures.Add(new VideoCapture(VideoPath));
+            }
+            if (!captures.First().IsOpened)
             {
                 MessageBox.Show("Error opening video file.");
                 return;
             }
 
-            // using (Window window = new Window("capture"))
-            int FPS = Convert.ToInt32(capture.Get(Emgu.CV.CvEnum.CapProp.Fps));
+            if (Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Temp") == false)
+            {
+                Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}Temp");
+            }
+            int step = FrameStep;
             await Task.Run(() =>
             {
-                if (Directory.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Temp") == false)
+                var pr = Parallel.ForEach(captures, async capture =>
                 {
-                    Directory.CreateDirectory($"{AppDomain.CurrentDomain.BaseDirectory}Temp");
-                }
-                using (Mat image = new Mat()) // Frame image buffer
-                {
-                    var frameIndex = 0;
-
                     bool isProcessing = true;
                     // Loop while we can read an image (aka: image.Empty is not true)
                     do
                     {
+                        int currentFrame = frameIndex += step;
                         // Read the next
-                        capture.Read(image);
-
-                        // We only want to save every FPS hit since we have 2 images per second -> mod
-                        if (frameIndex % (FPS / 2) == 0)
+                        capture.Set(Emgu.CV.CvEnum.CapProp.PosFrames, currentFrame);
+                        using var image = capture.QueryFrame();
+                        if (image == null || image.IsEmpty)
                         {
-                            string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
-                            image.Save(path);
                             App.Current.Dispatcher.Invoke(() =>
                             {
-                                img.Source = new BitmapImage(new Uri(path));
+                                IsProcessing = false;
+                                timer.Stop();
                             });
-                            DetectFaces(image.Clone(), path);
+                            break;
                         }
-
-                        frameIndex++;
+                        string path = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
+                        image.Save(path);
+                        App.Current.Dispatcher.Invoke(() =>
+                    {
+                        img.Source = new BitmapImage(new Uri(path));
+                    });
+                        await DetectFaces(image.Clone(), path);
 
                         App.Current.Dispatcher.Invoke(() =>
                         {
                             isProcessing = IsProcessing;
                         });
-                    } while (!image.IsEmpty && isProcessing);
 
-                    App.Current.Dispatcher.Invoke(() =>
-                    {
-                        IsProcessing = false;
-                    });
-                }
+                    } while (isProcessing);
+                });
             });
         }
         async Task DetectFaces(Mat image, string imagePath)
         {
             await Task.Run(() =>
             {
+                using var cascadeClassifier = new CascadeClassifier("haarcascade_frontalface_default.xml");
                 var rects = cascadeClassifier.DetectMultiScale(image, 1.08, 30, new System.Drawing.Size(30, 30), new System.Drawing.Size(300, 300));
 
                 foreach (var rect in rects)

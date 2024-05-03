@@ -11,6 +11,8 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition
+				Height="Auto" />  
+			<RowDefinition
 				Height="Auto" />
 			<RowDefinition
 				Height="*" />
@@ -21,7 +23,7 @@
 			<ColumnDefinition
 				Width="*" />
 			<ColumnDefinition
-				Width="Auto" />
+				Width="Auto" />	
 		</Grid.ColumnDefinitions>
 		<StackPanel
 			Grid.Row="0"
@@ -51,16 +53,46 @@
 				Name="ClearButton"
 				Click="Clear_Click" />
 			<TextBlock
+				Text="Process count:"
+				Margin="5"
+				VerticalAlignment="Center" />
+			<TextBox
+				Text="{Binding ProcessCount}"
+				Margin="5"
+				VerticalAlignment="Center" /> 	
+			<TextBlock
+				Text="Frame step:"
+				Margin="5"
+				VerticalAlignment="Center" />
+			<TextBox
+				Text="{Binding FrameStep}"
+				Margin="5"
+				VerticalAlignment="Center" /> 
+			<TextBlock
+				Text="FPS:"
+				Margin="5"
+				VerticalAlignment="Center" />
+			<TextBox
+				Text="{Binding FPS}"
+				Margin="5"
+				IsReadOnly="True"
+				VerticalAlignment="Center" />
+			<TextBlock
 				Text="{Binding VideoPath}"
 				Margin="5"
 				VerticalAlignment="Center" />
 		</StackPanel>
-		<Image
+		<TextBlock
 			Grid.Row="1"
+			Grid.ColumnSpan="3"
+			Margin="5"
+			Text="{Binding TimerText}" />
+		<Image
+			Grid.Row="2"
 			Grid.Column="0"
 			Name="img" />
 		<ListBox
-			Grid.Row="2"
+			Grid.Row="3"
 			Grid.Column="0"
 			Grid.ColumnSpan="2"
 			Name="listBox"
