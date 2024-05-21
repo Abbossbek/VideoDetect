@@ -14,6 +14,9 @@ using System.Windows.Shapes;
 using Emgu.CV;
 using VideoDetect.Models;
 using System.Text.RegularExpressions;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Structure;
+using Emgu.CV.Face;
 
 namespace VideoDetect
 {
@@ -107,6 +110,7 @@ namespace VideoDetect
             DependencyProperty.Register("TimerText", typeof(string), typeof(MainWindow), new PropertyMetadata(null));
 
         Timer timer;
+        EigenFaceRecognizer recognizer;
         public MainWindow()
         {
             InitializeComponent();
@@ -160,6 +164,7 @@ namespace VideoDetect
             }
 
             IsProcessing = true;
+            recognizer = new EigenFaceRecognizer(0, 2000);
             int seconds = 0;
             var frameIndex = 0;
             timer = new Timer((o) =>
@@ -169,7 +174,7 @@ namespace VideoDetect
                 {
                     TimerText = $"Process time: {TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss")}; Video time: {TimeSpan.FromSeconds(frameIndex / FPS).ToString(@"hh\:mm\:ss")}";
                 });
-            },null,0,1000);
+            }, null, 0, 1000);
 
             List<VideoCapture> captures = new List<VideoCapture>();
             for (int i = 0; i < ProcessCount; i++)
@@ -235,6 +240,21 @@ namespace VideoDetect
                 {
                     // get face image
                     var face = new Mat(image, rect);
+                    FaceRecognizer.PredictionResult result = default;
+                    try
+                    {
+                        result = recognizer.Predict(face.ToImage<Gray, byte>().Resize(200, 200, Inter.Cubic));
+                    }
+                    catch
+                    {
+
+                    }
+                    if (result.Distance != 0 && result.Label != -1 && result.Distance < 2000)
+                    {
+                        // Faces match
+                        continue;
+                    }
+                    recognizer.Train(new Mat[] { face }, new int[] { ++result.Label });
                     string facePath = $"{AppDomain.CurrentDomain.BaseDirectory}Temp\\{Guid.NewGuid()}.png";
                     face.Save(facePath);
                     App.Current.Dispatcher.Invoke(() =>
@@ -251,6 +271,46 @@ namespace VideoDetect
             {
                 img.Source = new BitmapImage(new Uri(ff.FoundFromImagePath));
             }
+        }
+        public bool AreFacesSamePerson(Image<Gray, byte> img1, Image<Gray, byte> img2)
+        {
+            // Step 1: Train the recognizer (similar to your previous code)
+            List<Mat> trainedFaces = new List<Mat>();
+            List<int> personLabels = new List<int>();
+            int imagesCount = 0;
+            // Initialize face detector (you can adjust the path to the Haar cascade file)
+            using var faceDetector = new CascadeClassifier("haarcascade_frontalface_alt.xml");
+
+            // Initialize recognizer
+            using var rec = new EigenFaceRecognizer(0, 2000);
+            foreach (var face in faceDetector.DetectMultiScale(img1.Mat, 1.2, 10, new System.Drawing.Size(50, 50), System.Drawing.Size.Empty))
+            {
+                Image<Gray, byte> trainedImage = img1.Copy(face).Resize(200, 200, Inter.Cubic);
+                CvInvoke.EqualizeHist(trainedImage, trainedImage);
+                trainedFaces.Add(trainedImage.Mat);
+                personLabels.Add(imagesCount);
+                imagesCount++;
+            }
+
+            rec.Train(trainedFaces.ToArray(), personLabels.ToArray());
+
+            // Step 2: Compare faces
+            System.Drawing.Rectangle[] rect = faceDetector.DetectMultiScale(img2.Mat, 1.2, 10, new System.Drawing.Size(50, 50), System.Drawing.Size.Empty);
+            if (rect.Length == 1)
+            {
+                Image<Gray, byte> grayFaceResult = img2.Copy(rect[0]).Resize(200, 200, Inter.Cubic);
+                CvInvoke.EqualizeHist(grayFaceResult, grayFaceResult);
+                var result = rec.Predict(grayFaceResult);
+
+                if (result.Label != -1 && result.Distance < 2000)
+                {
+                    // Faces match
+                    return true;
+                }
+            }
+
+            // Faces do not match
+            return false;
         }
     }
 }
